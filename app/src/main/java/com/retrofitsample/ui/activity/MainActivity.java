@@ -4,11 +4,11 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
-import android.widget.TextView;
 
 import com.retrofitsample.R;
 import com.retrofitsample.api.model.RepositoryModel;
-import com.retrofitsample.api.service.RepositoryClient;
+import com.retrofitsample.api.service.API;
+import com.retrofitsample.api.service.RetrofitClient;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -17,27 +17,39 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
-
-import static com.retrofitsample.api.service.RepositoryClient.BASE_URL;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.functions.Consumer;
+import io.reactivex.schedulers.Schedulers;
 
 public class MainActivity extends AppCompatActivity {
-
+    private CompositeDisposable compositeDisposable = new CompositeDisposable();
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        API client = RetrofitClient.getInstance().create(API.class);
+        fetchData(client,"1");
+    }
 
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(BASE_URL)
-                .addConverterFactory(GsonConverterFactory.create())
-                .build();
-        RepositoryClient client = retrofit.create(RepositoryClient.class);
-
+    private void fetchData(API client, String page) {
+        compositeDisposable.add(client.getRepositories(getParams(page))
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Consumer<RepositoryModel>() {
+                    @Override
+                    public void accept(RepositoryModel repositoryModel) {
+                        findViewById(R.id.progressBar).setVisibility(View.GONE);//hide Progress Bar
+                        findViewById(R.id.txtview).setVisibility(View.VISIBLE);
+                        printList(repositoryModel);
+                    }
+                }));
+    }
+    /*
+        Github link's get params
+        Calculate today - 30 days and parse it to the correct date format
+     */
+    private Map<String,String> getParams(String page) {
         Calendar calendar = Calendar.getInstance();
         calendar.add(Calendar.DAY_OF_MONTH,-30);//reduce 30 days of today's date
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd",Locale.US);
@@ -46,26 +58,8 @@ public class MainActivity extends AppCompatActivity {
         params.put("q","created:>"  + formattedDate);
         params.put("sort","stars");
         params.put("order","desc");
-        params.put("page","1");
-        Call<RepositoryModel> call = client.getRepositories(params);
-        call.enqueue(new Callback<RepositoryModel>() {
-            @Override
-            public void onResponse(Call<RepositoryModel> call, Response<RepositoryModel> response) {
-                RepositoryModel reposModel = response.body();
-                findViewById(R.id.progressBar).setVisibility(View.GONE);//hide Progress Bar
-                findViewById(R.id.txtview).setVisibility(View.VISIBLE);
-                printList(reposModel);
-            }
-
-            @Override
-            public void onFailure(Call<RepositoryModel> call, Throwable t) {
-                Log.e("Mainactivity","Error");
-                findViewById(R.id.progressBar).setVisibility(View.GONE);//hide Progress Bar
-                TextView txt = findViewById(R.id.txtview);
-                txt.setText("Error");
-                txt.setVisibility(View.VISIBLE);
-            }
-        });
+        params.put("page",page);
+        return params;
     }
 
     private void printList(RepositoryModel reposModel){
@@ -78,3 +72,13 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 }
+
+//TODO add support of okhttp3
+//TODO Implement error handling with internet is available?
+/*
+    Log.e("Mainactivity","Error");
+    findViewById(R.id.progressBar).setVisibility(View.GONE);//hide Progress Bar
+    TextView txt = findViewById(R.id.txtview);
+    txt.setText("Error");
+    txt.setVisibility(View.VISIBLE);
+   */

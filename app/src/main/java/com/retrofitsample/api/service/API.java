@@ -4,12 +4,12 @@ import com.retrofitsample.api.model.RepositoryModel;
 
 import java.util.Map;
 
-import retrofit2.Call;
+import io.reactivex.Observable;
 import retrofit2.http.GET;
 import retrofit2.http.QueryMap;
 
-public interface RepositoryClient {
+public interface API {
     String BASE_URL = "https://api.github.com/";
     @GET("/search/repositories")
-    Call<RepositoryModel> getRepositories(@QueryMap Map<String,String> params);
+    Observable<RepositoryModel> getRepositories(@QueryMap Map<String,String> params);
 }
