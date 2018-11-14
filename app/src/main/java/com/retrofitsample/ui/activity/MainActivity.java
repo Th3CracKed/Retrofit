@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.widget.TextView;
 
 import com.retrofitsample.R;
 import com.retrofitsample.api.model.RepositoryModel;
@@ -18,35 +19,48 @@ import java.util.Locale;
 import java.util.Map;
 
 import io.reactivex.android.schedulers.AndroidSchedulers;
-import io.reactivex.disposables.CompositeDisposable;
-import io.reactivex.functions.Consumer;
+import io.reactivex.observers.DisposableObserver;
 import io.reactivex.schedulers.Schedulers;
 
 public class MainActivity extends AppCompatActivity {
-    private CompositeDisposable compositeDisposable = new CompositeDisposable();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        API client = RetrofitClient.getInstance().create(API.class);
-        fetchData(client,"1");
+        API api = RetrofitClient.getInstance().create(API.class);
+        fetchData(api,"1");
     }
-
-    private void fetchData(API client, String page) {
-        compositeDisposable.add(client.getRepositories(getParams(page))
+    //it's even cooler to add this https://medium.com/mindorks/rxjava2-and-retrofit2-error-handling-on-a-single-place-8daf720d42d6
+    private void fetchData(API api, String page) {
+        api.getRepositories(getParams(page))
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<RepositoryModel>() {
+                .subscribe(new DisposableObserver<RepositoryModel>() {
                     @Override
-                    public void accept(RepositoryModel repositoryModel) {
+                    public void onNext(RepositoryModel repositoryModel) {
                         findViewById(R.id.progressBar).setVisibility(View.GONE);//hide Progress Bar
                         findViewById(R.id.txtview).setVisibility(View.VISIBLE);
                         printList(repositoryModel);
                     }
-                }));
+
+                    @Override
+                    public void onError(Throwable e) {
+                        Log.e("Mainactivity","Error");
+                        findViewById(R.id.progressBar).setVisibility(View.GONE);//hide Progress Bar
+                        TextView txt = findViewById(R.id.txtview);
+                        txt.setText("Error");
+                        txt.setVisibility(View.VISIBLE);
+                    }
+
+                    @Override
+                    public void onComplete() {
+
+                    }
+                });
     }
     /*
-        Github link's get params
+        return GET params
         Calculate today - 30 days and parse it to the correct date format
      */
     private Map<String,String> getParams(String page) {
@@ -72,13 +86,3 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 }
-
-//TODO add support of okhttp3
-//TODO Implement error handling with internet is available?
-/*
-    Log.e("Mainactivity","Error");
-    findViewById(R.id.progressBar).setVisibility(View.GONE);//hide Progress Bar
-    TextView txt = findViewById(R.id.txtview);
-    txt.setText("Error");
-    txt.setVisibility(View.VISIBLE);
-   */
