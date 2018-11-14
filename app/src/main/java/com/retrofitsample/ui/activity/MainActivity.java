@@ -4,8 +4,10 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import com.github.pwittchen.reactivenetwork.library.rx2.ReactiveNetwork;
 import com.retrofitsample.R;
 import com.retrofitsample.api.model.RepositoryModel;
 import com.retrofitsample.api.service.API;
@@ -18,52 +20,96 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import io.reactivex.SingleSource;
 import io.reactivex.android.schedulers.AndroidSchedulers;
-import io.reactivex.observers.DisposableObserver;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Function;
 import io.reactivex.schedulers.Schedulers;
 
 public class MainActivity extends AppCompatActivity {
+
+    private TextView tvInternetStatus;
+    private TextView result;
+    private ProgressBar progressBar;
+    private Disposable internetDisposable;
+    private API api;
+    private String requestedPage = "1";//counter
+    private Boolean isRequested = true;
+    private CompositeDisposable compositeDisposable = new CompositeDisposable();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        API api = RetrofitClient.getInstance().create(API.class);
-        fetchData(api,"1");
+        api = RetrofitClient.getInstance().create(API.class);
+        tvInternetStatus = findViewById(R.id.internet_status);
+        result = findViewById(R.id.txtview);
+        progressBar = findViewById(R.id.progressBar);
     }
-    //it's even cooler to add this https://medium.com/mindorks/rxjava2-and-retrofit2-error-handling-on-a-single-place-8daf720d42d6
-    private void fetchData(API api, String page) {
-        api.getRepositories(getParams(page))
+
+    @Override protected void onResume() {
+        super.onResume();
+        onInternetAvailabilityChange();
+    }
+
+    @Override protected void onPause() {
+        super.onPause();
+        safelyDispose(internetDisposable,compositeDisposable);
+    }
+
+    private void safelyDispose(Disposable... disposables) {
+        for (Disposable subscription : disposables) {
+            if (subscription != null && !subscription.isDisposed()) {
+                subscription.dispose();
+            }
+        }
+    }
+
+    private void onInternetAvailabilityChange() {
+        internetDisposable = ReactiveNetwork
+                .observeInternetConnectivity()
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new DisposableObserver<RepositoryModel>() {
-                    @Override
-                    public void onNext(RepositoryModel repositoryModel) {
-                        findViewById(R.id.progressBar).setVisibility(View.GONE);//hide Progress Bar
-                        findViewById(R.id.txtview).setVisibility(View.VISIBLE);
-                        printList(repositoryModel);
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-                        Log.e("Mainactivity","Error");
-                        findViewById(R.id.progressBar).setVisibility(View.GONE);//hide Progress Bar
-                        TextView txt = findViewById(R.id.txtview);
-                        txt.setText("Error");
-                        txt.setVisibility(View.VISIBLE);
-                    }
-
-                    @Override
-                    public void onComplete() {
-
+                .subscribe(isConnected ->{
+                    Log.e("Main","onInternetAvailabilityChange");
+                    tvInternetStatus.setText(isConnected.toString());
+                    //if internet became available, and user requested a page
+                    if (isConnected && isRequested) {
+                        progressBar.setVisibility(View.VISIBLE);//show Progress Bar
+                        result.setVisibility(View.INVISIBLE);
+                        fetchData();
                     }
                 });
     }
+
+    private void fetchData(){
+        compositeDisposable.add(api.getRepositories(getParams())
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(this::onFetchSuccess, throwable -> onFetchFailed()));
+    }
+
+    private void onFetchSuccess(RepositoryModel repositoryModel) {
+        progressBar.setVisibility(View.INVISIBLE);//hide Progress Bar
+        result.setVisibility(View.VISIBLE);
+        printList(repositoryModel);
+        requestedPage = String.valueOf(Integer.parseInt(requestedPage)+1);//increment
+        isRequested = false;//request delivered
+    }
+
+    private void onFetchFailed() {
+        Log.e("Mainactivity","Error");
+        progressBar.setVisibility(View.INVISIBLE);//hide Progress Bar
+        result.setText("Error");
+        result.setVisibility(View.VISIBLE);
+    }
+
     /*
         return GET params
         Calculate today - 30 days and parse it to the correct date format
      */
-    private Map<String,String> getParams(String page) {
+    private Map<String,String> getParams() {
         Calendar calendar = Calendar.getInstance();
         calendar.add(Calendar.DAY_OF_MONTH,-30);//reduce 30 days of today's date
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd",Locale.US);
@@ -72,14 +118,14 @@ public class MainActivity extends AppCompatActivity {
         params.put("q","created:>"  + formattedDate);
         params.put("sort","stars");
         params.put("order","desc");
-        params.put("page",page);
+        params.put("page",requestedPage);
         return params;
     }
 
     private void printList(RepositoryModel reposModel){
         List<RepositoryModel.Item> items = reposModel.getItems();
         for(RepositoryModel.Item item : items){
-            Log.d("MainActivity"," Name : "+item.getName()+" Description : "+item.getDescription()
+            Log.e("MainActivity"," Name : "+item.getName()+" Description : "+item.getDescription()
                     +" \nLogin : "+item.getOwner().getLogin()+" Watchers : "+item.getWatchers()+" Image url : "+item.getOwner().getAvatar_url()+" Repo Url : "+item.getHtml_url()
 
             );
