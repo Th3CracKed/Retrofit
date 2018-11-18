@@ -9,7 +9,7 @@ import static com.retrofitsample.api.service.API.BASE_URL;
 public class RetrofitClient {
     private static Retrofit ourInstance;
 
-    public static Retrofit getInstance() {
+    public static synchronized Retrofit getInstance() {
         if(ourInstance == null)
             ourInstance = new Retrofit.Builder()
                 .baseUrl(BASE_URL)
