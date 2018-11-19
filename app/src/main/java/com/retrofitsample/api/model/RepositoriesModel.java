@@ -4,8 +4,7 @@ import java.util.List;
 /*
 * A POJO Class
  */
- //TODO Change Name TO RepositoriesModel
-public class RepositoryModel {
+public class RepositoriesModel {
 
     private List<Item> items;
 

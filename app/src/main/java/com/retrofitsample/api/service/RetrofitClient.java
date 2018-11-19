@@ -8,7 +8,7 @@ import static com.retrofitsample.api.service.API.BASE_URL;
 
 public class RetrofitClient {
     private static Retrofit ourInstance;
-
+	//TODO Replace Singleton with simple Factory
     public static synchronized Retrofit getInstance() {
         if(ourInstance == null)
             ourInstance = new Retrofit.Builder()

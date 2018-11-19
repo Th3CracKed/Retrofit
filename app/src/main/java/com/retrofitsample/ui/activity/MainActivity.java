@@ -3,8 +3,6 @@ package com.retrofitsample.ui.activity;
 import android.os.Bundle;
 
 import com.retrofitsample.R;
-import com.retrofitsample.api.service.API;
-import com.retrofitsample.api.service.RetrofitClient;
 import com.retrofitsample.databinding.ActivityMainBinding;
 import com.retrofitsample.observer.MyObserver;
 

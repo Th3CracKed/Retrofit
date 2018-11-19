@@ -1,6 +1,6 @@
 package com.retrofitsample.api.service;
 
-import com.retrofitsample.api.model.RepositoryModel;
+import com.retrofitsample.api.model.RepositoriesModel;
 
 import java.util.Map;
 
@@ -11,5 +11,5 @@ import retrofit2.http.QueryMap;
 public interface API {
     String BASE_URL = "https://api.github.com/";
     @GET("/search/repositories")
-    Single<RepositoryModel> getRepositories(@QueryMap Map<String,String> params);
+    Single<RepositoriesModel> getRepositories(@QueryMap Map<String,String> params);
 }

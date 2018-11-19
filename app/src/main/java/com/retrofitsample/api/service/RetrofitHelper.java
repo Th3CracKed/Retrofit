@@ -2,7 +2,7 @@ package com.retrofitsample.api.service;
 
 import android.util.Log;
 
-import com.retrofitsample.api.model.RepositoryModel;
+import com.retrofitsample.api.model.RepositoriesModel;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -38,8 +38,8 @@ public class RetrofitHelper {
         return params;
     }
 
-    public void logList(List <RepositoryModel.Item> items){
-        for(RepositoryModel.Item item : items){
+    public void logList(List <RepositoriesModel.Item> items){
+        for(RepositoriesModel.Item item : items){
             Log.e("MainActivity"," Name : "+item.getName()+" Description : "+item.getDescription()
                     +" \nLogin : "+item.getOwner().getLogin()+" Watchers : "+item.getWatchers()+" Image url : "+item.getOwner().getAvatar_url()+" Repo Url : "+item.getHtml_url()
 
